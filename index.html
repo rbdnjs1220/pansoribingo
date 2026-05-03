@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>판소리 빙고</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700;900&family=Gowun+Batang:wght@400;700&display=swap');
+
+  :root {
+    --ink: #5c3d1e;
+    --paper: #f5eed8;
+    --red: #c0392b;
+    --gold: #b8860b;
+    --stamp: #8b1a1a;
+    --light: #faf6ec;
+    --green: #2d6a4f;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    background-image:
+      radial-gradient(ellipse at 20% 10%, #e8dfc0 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 90%, #ddd0a8 0%, transparent 60%);
+    font-family: 'Noto Serif KR', serif;
+    min-height: 100vh;
+    color: var(--ink);
+  }
+
+  .screen { display: none; flex-direction: column; align-items: center; padding: 40px 16px 60px; min-height: 100vh; }
+  .screen.active { display: flex; }
+
+  .tag { font-size: 11px; letter-spacing: 0.25em; color: var(--stamp); border: 1.5px solid var(--stamp); display: inline-block; padding: 3px 12px; margin-bottom: 12px; }
+  h1 { font-size: clamp(24px,5vw,38px); font-weight: 900; letter-spacing: -0.02em; line-height: 1.15; text-align: center; }
+  h1 em { color: var(--red); font-style: normal; }
+  .sub { font-size: 13px; color: #7a6a50; margin-top: 8px; text-align: center; line-height: 1.6; }
+
+  button {
+    font-family: 'Noto Serif KR', serif; font-size: 14px; font-weight: 700;
+    padding: 11px 28px; border: 2px solid var(--ink);
+    background: var(--light); color: var(--ink);
+    cursor: pointer; border-radius: 2px;
+    box-shadow: 3px 3px 0 var(--ink); transition: all 0.12s; letter-spacing: 0.02em;
+  }
+  button:hover { background: var(--ink); color: var(--paper); transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--gold); }
+  button:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--ink); }
+  button.primary { background: var(--red); color: #fff; border-color: var(--red); box-shadow: 3px 3px 0 #7a1010; }
+  button.primary:hover { background: #a52a1a; box-shadow: 4px 4px 0 #5a0808; }
+  button.green-btn { background: var(--green); color: #fff; border-color: var(--green); box-shadow: 3px 3px 0 #1a4030; }
+  button.green-btn:hover { background: #1e4d38; box-shadow: 4px 4px 0 #0e2820; }
+
+  .card { background: var(--light); border: 2px solid var(--ink); border-radius: 2px; box-shadow: 5px 5px 0 var(--ink); padding: 32px 36px; width: 100%; max-width: 460px; }
+
+  label { font-size: 11px; font-weight: 700; letter-spacing: 0.15em; color: var(--stamp); display: block; margin-bottom: 7px; margin-top: 20px; text-transform: uppercase; }
+  label:first-of-type { margin-top: 0; }
+
+  input[type=text], input[type=password] {
+    width: 100%; padding: 10px 14px; border: 2px solid var(--ink); border-radius: 2px;
+    background: var(--paper); font-family: 'Noto Serif KR', serif;
+    font-size: 14px; color: var(--ink); box-shadow: inset 2px 2px 0 rgba(0,0,0,0.05);
+  }
+  input:focus { outline: none; border-color: var(--red); }
+
+  .sel-row { display: flex; gap: 7px; flex-wrap: wrap; }
+  .sel-btn {
+    padding: 7px 14px; font-size: 13px; font-weight: 600;
+    border: 2px solid #c8bfa0; background: var(--paper); color: #7a6a50;
+    cursor: pointer; border-radius: 2px; transition: all 0.1s;
+    font-family: 'Noto Serif KR', serif; box-shadow: 2px 2px 0 #c8bfa0;
+    user-select: none;
+  }
+  .sel-btn.on { background: var(--ink); color: var(--paper); border-color: var(--ink); box-shadow: 2px 2px 0 var(--gold); }
+
+  .err { font-size: 12px; color: var(--red); margin-top: 8px; min-height: 18px; }
+
+  /* GAME */
+  #screen-game { padding-top: 20px; }
+  #screen-game header { text-align: center; margin-bottom: 16px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--ink); color: var(--paper);
+    padding: 5px 16px; border-radius: 2px; font-size: 12px; font-weight: 700;
+    margin-top: 10px; letter-spacing: 0.05em;
+  }
+  .badge em { color: #f0c060; font-style: normal; }
+
+  .bingo-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; width: 100%; max-width: 520px; margin: 0 auto 20px; }
+  .cell {
+    background: var(--light); border: 2px solid var(--ink); border-radius: 2px;
+    padding: 12px 10px; min-height: 108px;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; font-size: 12px; line-height: 1.55; color: var(--ink);
+    cursor: pointer; position: relative; overflow: hidden;
+    box-shadow: 3px 3px 0 rgba(26,16,8,0.15); transition: all 0.13s; user-select: none;
+  }
+  .cell:hover:not(.marked) { background: #ede4c8; transform: translate(-1px,-1px); box-shadow: 4px 4px 0 rgba(26,16,8,0.25); }
+  .cell.marked { background: var(--ink); color: var(--paper); box-shadow: none; transform: translate(2px,2px); }
+  .cell.marked::after { content: '✓'; position: absolute; top: 5px; right: 7px; font-size: 13px; color: #f0c060; font-weight: 900; }
+  .cell.bingo-line { background: var(--red) !important; color: #fff !important; box-shadow: inset 0 0 0 3px #fff !important; }
+  .cell.bingo-line::after { color: #fff !important; }
+
+  .submit-wrap { width: 100%; max-width: 520px; text-align: center; }
+  .submit-wrap .note { font-size: 12px; color: #9a8a70; margin-top: 10px; }
+
+  /* DONE */
+  #screen-done { justify-content: center; }
+  .done-card { text-align: center; }
+  .done-card .big { font-size: 64px; line-height: 1; margin-bottom: 16px; }
+  .done-card h2 { font-size: 28px; font-weight: 900; margin-bottom: 6px; }
+  .rank-badge {
+    display: inline-block; background: var(--red); color: #fff;
+    font-size: 22px; font-weight: 900; padding: 10px 28px;
+    border-radius: 2px; margin: 18px 0 8px; box-shadow: 3px 3px 0 #7a1010;
+  }
+
+  /* OVERLAY */
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(26,16,8,0.75); z-index: 200; align-items: center; justify-content: center; }
+  .overlay.show { display: flex; animation: fadeIn 0.25s; }
+  .ov-box { background: var(--paper); border: 3px solid var(--ink); padding: 36px 40px; text-align: center; box-shadow: 8px 8px 0 var(--ink); border-radius: 2px; max-width: 360px; width: 90%; }
+  .ov-box h2 { font-size: 22px; font-weight: 900; margin-bottom: 10px; }
+  .ov-box p { font-size: 13px; color: #7a6a50; margin-bottom: 24px; line-height: 1.7; white-space: pre-line; }
+  .btn-row { display: flex; gap: 10px; justify-content: center; }
+
+  /* TEACHER */
+  #screen-teacher { padding-top: 32px; }
+  #screen-teacher header { text-align: center; margin-bottom: 24px; }
+  .dash-top { display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 580px; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+  .dash-top h2 { font-size: 17px; font-weight: 900; }
+  .counter { font-size: 13px; color: #7a6a50; }
+  .counter strong { color: var(--red); font-weight: 900; }
+
+  .rank-table { width: 100%; max-width: 580px; border-collapse: collapse; }
+  .rank-table th { background: var(--ink); color: var(--paper); padding: 10px 14px; font-size: 12px; letter-spacing: 0.08em; text-align: left; }
+  .rank-table td { padding: 11px 14px; border-bottom: 1px solid #d8cba8; font-size: 13px; background: var(--light); }
+  .rank-table tr:hover td { background: #ede4c8; }
+  .rnum { font-weight: 900; color: var(--red); font-size: 17px; }
+  .rnum.g { color: #b8860b; } .rnum.s { color: #888; } .rnum.b { color: #a0522d; }
+  .ctag { font-size: 10px; background: var(--green); color: #fff; padding: 2px 7px; border-radius: 2px; margin-left: 6px; }
+  .empty-state { text-align: center; padding: 48px; color: #9a8a70; font-size: 14px; }
+  .del-btn { padding: 3px 8px; font-size: 11px; font-weight: 900; background: var(--paper); color: #bbb; border: 1.5px solid #ccc; box-shadow: none; border-radius: 2px; }
+  .del-btn:hover { background: var(--red); color: #fff; border-color: var(--red); box-shadow: none; transform: none; }
+
+  .teacher-link { margin-top: 22px; font-size: 12px; color: #9a8a70; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .teacher-link:hover { color: var(--stamp); }
+
+  @keyframes fadeIn { from{opacity:0}to{opacity:1} }
+
+  @media(max-width:480px){
+    .card{padding:24px 18px;}
+    .cell{min-height:86px;font-size:11px;padding:10px 7px;}
+    .ov-box{padding:28px 20px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ① 로그인 -->
+<div class="screen active" id="screen-login">
+  <header style="text-align:center;margin-bottom:32px">
+    <div class="tag">음악 감상 활동</div>
+    <h1>판소리 <em>빙고</em></h1>
+    <p class="sub">팀 정보를 입력하고 게임을 시작하세요</p>
+  </header>
+
+  <div class="card">
+    <label>학년</label>
+    <div class="sel-row" id="grade-row">
+      <div class="sel-btn" onclick="pick(this,'grade-row',1)">1학년</div>
+      <div class="sel-btn" onclick="pick(this,'grade-row',2)">2학년</div>
+      <div class="sel-btn" onclick="pick(this,'grade-row',3)">3학년</div>
+    </div>
+
+    <label>반</label>
+    <div class="sel-row" id="class-row">
+      <div class="sel-btn" onclick="pick(this,'class-row',1)">1반</div>
+      <div class="sel-btn" onclick="pick(this,'class-row',2)">2반</div>
+      <div class="sel-btn" onclick="pick(this,'class-row',3)">3반</div>
+      <div class="sel-btn" onclick="pick(this,'class-row',4)">4반</div>
+      <div class="sel-btn" onclick="pick(this,'class-row',5)">5반</div>
+      <div class="sel-btn" onclick="pick(this,'class-row',6)">6반</div>
+    </div>
+
+    <label>팀원 이름 <span style="font-weight:400;color:#9a8a70;font-size:10px">(쉼표로 구분)</span></label>
+    <input type="text" id="names-input" placeholder="예) 홍길동, 김춘향, 이몽룡">
+    <div class="err" id="login-err"></div>
+
+    <div style="margin-top:26px">
+      <button class="primary" style="width:100%" onclick="startGame()">게임 시작 →</button>
+    </div>
+  </div>
+
+  <div class="teacher-link" onclick="openTeacherLogin()">선생님 입장</div>
+</div>
+
+<!-- ② 게임 -->
+<div class="screen" id="screen-game">
+  <header>
+    <div class="tag">음악 감상 활동</div>
+    <h1>판소리 <em>빙고</em></h1>
+    <p class="sub">판소리의 3요소에 해당하는 칸을 클릭하여 빙고를 만들어보세요.</p>
+    <div class="badge" id="player-badge">—</div>
+  </header>
+
+  <div class="bingo-grid" id="bingoGrid"></div>
+
+  <div class="submit-wrap">
+    <button class="green-btn" onclick="submitBingo()">제출하기 ✓</button>
+    <p class="note">빙고가 완성된 후 제출하세요</p>
+  </div>
+</div>
+
+<!-- ③ 제출 완료 -->
+<div class="screen" id="screen-done">
+  <div class="card done-card">
+    <div class="big">🎉</div>
+    <h2>제출 완료!</h2>
+    <p class="sub">선생님 화면에서 순위를 확인하세요</p>
+    <p class="sub" id="done-info" style="margin-top:4px"></p>
+  </div>
+</div>
+
+<!-- ④ 선생님 대시보드 -->
+<div class="screen" id="screen-teacher">
+  <header>
+    <div class="tag">선생님 전용</div>
+    <h1>판소리 빙고 <em>순위</em></h1>
+  </header>
+
+  <div class="dash-top">
+    <h2>실시간 제출 현황</h2>
+    <span class="counter">제출 팀: <strong id="submit-count">0</strong></span>
+  </div>
+
+  <table class="rank-table">
+    <thead>
+      <tr>
+        <th style="width:52px">순위</th>
+        <th>팀원</th>
+        <th style="width:80px">학년·반</th>
+        <th style="width:90px">제출 시각</th>
+      <th style="width:40px"></th>
+      </tr>
+    </thead>
+    <tbody id="rank-body">
+      <tr><td colspan="4" class="empty-state">아직 제출한 팀이 없습니다</td></tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top:24px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+    <button onclick="clearAll()">기록 초기화</button>
+    <button onclick="showScreen('screen-login')">학생 화면으로</button>
+  </div>
+</div>
+
+<!-- OVERLAY: 오답 -->
+<div class="overlay" id="retry-overlay">
+  <div class="ov-box">
+    <h2>🤔 다시 확인해보세요!</h2>
+    <p id="retry-msg">판소리의 3요소(창자·고수·관객)가\n모두 체크되어 있지 않아요.</p>
+    <div class="btn-row">
+      <button class="primary" onclick="document.getElementById('retry-overlay').classList.remove('show')">다시 하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY: 선생님 비밀번호 -->
+<div class="overlay" id="teacher-overlay">
+  <div class="ov-box">
+    <h2>선생님 입장</h2>
+    <p style="margin-bottom:12px;white-space:normal">비밀번호를 입력하세요</p>
+    <input type="password" id="teacher-pw" placeholder="비밀번호"
+      onkeydown="if(event.key==='Enter')checkTeacherPw()" style="margin-bottom:6px">
+    <div class="err" id="teacher-err"></div>
+    <div class="btn-row" style="margin-top:16px">
+      <button onclick="document.getElementById('teacher-overlay').classList.remove('show')">취소</button>
+      <button class="primary" onclick="checkTeacherPw()">입장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ────────────────────────────────────────
+// 데이터
+// ────────────────────────────────────────
+const TEACHER_PW = '1234';
+
+// isThree: true 가 판소리 3요소 (창자/고수/관객)
+const cards = [
+  { desc: "무대에서 노래와 말로 이야기를 전달하는 소리꾼.", answer: "창자", isThree: true },
+  { desc: "공연에서 북을 치며 장단을 맞추고 '얼쑤!', '좋다!' 같은 추임새로 창자의 흥을 돋우는 사람.", answer: "고수", isThree: true },
+  { desc: "공연 중 추임새로 호응하며 무대를 완성하는 사람들.", answer: "관객", isThree: true },
+  { desc: "창자가 노래로 부르는 부분. 감정과 이야기를 선율에 실어 전달한다.", answer: "소리" },
+  { desc: "창자가 말로 이야기를 풀어내는 부분. 마치 성우처럼 장면을 설명하거나 인물을 묘사한다.", answer: "아니리" },
+  { desc: "창자가 손짓, 몸짓으로 감정과 장면을 표현하는 것.", answer: "발림" },
+  { desc: "배우가 가락에 맞춰 노래로 부르는 부분.", answer: "창(唱)" },
+  { desc: "배우가 리듬감 있게 낭송하듯 말하는 부분.", answer: "염(念)" },
+  { desc: "오페라에서 가락에 맞춰 노래하는 독창곡. 인물의 감정을 선율로 표현하며 극의 하이라이트가 된다.", answer: "아리아" }
+];
+
+const LINES = [
+  [0,1,2],[3,4,5],[6,7,8],
+  [0,3,6],[1,4,7],[2,5,8],
+  [0,4,8],[2,4,6]
+];
+
+// ────────────────────────────────────────
+// 상태
+// ────────────────────────────────────────
+let selGrade = null, selClass = null, playerNames = '';
+let cellOrder = []; // cellOrder[pos] = cardIdx
+let marked = new Set();
+let submissions = JSON.parse(localStorage.getItem('pansori_bingo_v2') || '[]');
+
+function save() { localStorage.setItem('pansori_bingo_v2', JSON.stringify(submissions)); }
+
+// ────────────────────────────────────────
+// 유틸
+// ────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length-1; i>0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]] = [a[j],a[i]];
+  }
+  return a;
+}
+
+// ────────────────────────────────────────
+// 로그인
+// ────────────────────────────────────────
+function pick(el, rowId, val) {
+  document.querySelectorAll(`#${rowId} .sel-btn`).forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  if (rowId === 'grade-row') selGrade = val;
+  else selClass = val;
+}
+
+function startGame() {
+  const names = document.getElementById('names-input').value.trim();
+  const err = document.getElementById('login-err');
+  if (!selGrade) { err.textContent = '학년을 선택해주세요.'; return; }
+  if (!selClass) { err.textContent = '반을 선택해주세요.'; return; }
+  if (!names)    { err.textContent = '팀원 이름을 입력해주세요.'; return; }
+  err.textContent = '';
+  playerNames = names;
+  initGame();
+  showScreen('screen-game');
+}
+
+// ────────────────────────────────────────
+// 게임 초기화
+// ────────────────────────────────────────
+function initGame() {
+  marked.clear();
+
+  // 3요소(0,1,2)가 반드시 빙고 한 줄에 모이도록 배치
+  // 가능한 빙고 줄 중 하나를 랜덤 선택 → 3요소를 그 줄에 배치
+  const threeLine = LINES[Math.floor(Math.random() * LINES.length)];
+  // 나머지 6칸
+  const otherPositions = [...Array(9).keys()].filter(p => !threeLine.includes(p));
+  const shuffledOther = shuffle([3,4,5,6,7,8]); // 나머지 카드 인덱스
+
+  cellOrder = Array(9);
+  // 3요소 카드 (인덱스 0,1,2)를 선택된 줄에 섞어 배치
+  const shuffledThree = shuffle([0,1,2]);
+  threeLine.forEach((pos, i) => { cellOrder[pos] = shuffledThree[i]; });
+  otherPositions.forEach((pos, i) => { cellOrder[pos] = shuffledOther[i]; });
+
+  // 배지
+  document.getElementById('player-badge').innerHTML =
+    `<em>${selGrade}학년 ${selClass}반</em>&nbsp;·&nbsp;${playerNames}`;
+
+  // 그리드 렌더
+  const grid = document.getElementById('bingoGrid');
+  grid.innerHTML = '';
+  cellOrder.forEach((cardIdx, pos) => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.pos = pos;
+    cell.textContent = cards[cardIdx].desc;
+    cell.onclick = () => toggleCell(pos);
+    grid.appendChild(cell);
+  });
+}
+
+// ────────────────────────────────────────
+// 게임 인터랙션
+// ────────────────────────────────────────
+function toggleCell(pos) {
+  const cells = document.querySelectorAll('.cell');
+  if (marked.has(pos)) {
+    marked.delete(pos);
+    cells[pos].classList.remove('marked','bingo-line');
+  } else {
+    marked.add(pos);
+    cells[pos].classList.add('marked');
+  }
+  refreshBingo();
+}
+
+function refreshBingo() {
+  const cells = document.querySelectorAll('.cell');
+  cells.forEach(c => { if (!c.classList.contains('marked')) c.classList.remove('bingo-line'); });
+  LINES.forEach(line => {
+    if (line.every(p => marked.has(p))) {
+      line.forEach(p => cells[p].classList.add('bingo-line'));
+    }
+  });
+}
+
+// ────────────────────────────────────────
+// 제출
+// ────────────────────────────────────────
+function submitBingo() {
+  // 빙고 줄 완성 확인
+  const hasBingo = LINES.some(line => line.every(p => marked.has(p)));
+  if (!hasBingo) {
+    document.getElementById('retry-msg').textContent =
+      '아직 빙고가 완성되지 않았어요.\n창자·고수·관객을 이어 빙고를 만들어보세요!';
+    document.getElementById('retry-overlay').classList.add('show');
+    return;
+  }
+
+  // 3요소(창자/고수/관객) 모두 체크됐는지 확인
+  const threePos = cellOrder.map((cardIdx,pos) => cards[cardIdx].isThree ? pos : -1).filter(p => p >= 0);
+  const allThree = threePos.every(p => marked.has(p));
+  if (!allThree) {
+    document.getElementById('retry-msg').textContent =
+      '판소리의 3요소(창자·고수·관객)가\n모두 포함된 빙고가 아니에요.\n다시 확인해보세요!';
+    document.getElementById('retry-overlay').classList.add('show');
+    return;
+  }
+
+  // 저장
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const entry = { grade: selGrade, classNum: selClass, names: playerNames, time: timeStr, ts: now.getTime() };
+  submissions.push(entry);
+  submissions.sort((a,b) => a.ts - b.ts);
+  save();
+
+  document.getElementById('done-info').textContent = `${selGrade}학년 ${selClass}반 · ${playerNames}`;
+  showScreen('screen-done');
+}
+
+// ────────────────────────────────────────
+// 선생님
+// ────────────────────────────────────────
+function openTeacherLogin() {
+  document.getElementById('teacher-pw').value = '';
+  document.getElementById('teacher-err').textContent = '';
+  document.getElementById('teacher-overlay').classList.add('show');
+  setTimeout(() => document.getElementById('teacher-pw').focus(), 100);
+}
+
+function checkTeacherPw() {
+  if (document.getElementById('teacher-pw').value === TEACHER_PW) {
+    document.getElementById('teacher-overlay').classList.remove('show');
+    renderDashboard();
+    showScreen('screen-teacher');
+  } else {
+    document.getElementById('teacher-err').textContent = '비밀번호가 틀렸습니다.';
+  }
+}
+
+function renderDashboard() {
+  const tbody = document.getElementById('rank-body');
+  document.getElementById('submit-count').textContent = submissions.length;
+
+  if (submissions.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">아직 제출한 팀이 없습니다</td></tr>';
+    return;
+  }
+
+  const medals = ['🥇','🥈','🥉'];
+  const cls = ['g','s','b'];
+
+  tbody.innerHTML = submissions.slice(0,15).map((s,i) => {
+    const rc = i < 3 ? cls[i] : '';
+    const medal = i < 3 ? ` ${medals[i]}` : '';
+    return `<tr>
+      <td><span class="rnum ${rc}">${i+1}</span>${medal}</td>
+      <td>${s.names} <span class="ctag">정답</span></td>
+      <td>${s.grade}학년 ${s.classNum}반</td>
+      <td>${s.time}</td>
+      <td><button class="del-btn" onclick="deleteEntry(${s.ts})">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function deleteEntry(ts) {
+  submissions = submissions.filter(s => s.ts !== ts);
+  save();
+  renderDashboard();
+}
+
+function clearAll() {
+  if (confirm('모든 제출 기록을 초기화할까요?')) {
+    submissions = [];
+    save();
+    renderDashboard();
+  }
+}
+</script>
+</body>
+</html>
